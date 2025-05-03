@@ -19,7 +19,7 @@ const NUMBERS = '0123456789';
 
 function generatePassword(minLength, maxLength, useSpecialChars, specialCharsList, 
                         useNumbers, allowCapitalLetters, noConsecutiveRepeats, 
-                        ensureOneOfEach) {
+                        ensureOneOfEach, excludeChars) {
     // Initialize character set with lowercase letters
     let characters = LOWERCASE;
     let password = [];
@@ -29,19 +29,43 @@ function generatePassword(minLength, maxLength, useSpecialChars, specialCharsLis
     if (useNumbers) characters += NUMBERS;
     if (useSpecialChars) characters += specialCharsList;
     
+    // Remove excluded characters from the character set
+    if (excludeChars) {
+        characters = characters.split('')
+            .filter(char => !excludeChars.includes(char))
+            .join('');
+            
+        // Check if we have enough characters left to generate a password
+        if (characters.length === 0) {
+            throw new Error('All characters have been excluded. Cannot generate password.');
+        }
+    }
+    
     // Random length between min and max
     const length = Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength;
     
     // Ensure one of each type if requested
     if (ensureOneOfEach) {
         if (allowCapitalLetters) {
-            password.push(UPPERCASE[Math.floor(Math.random() * UPPERCASE.length)]);
+            const availableUppercase = UPPERCASE.split('')
+                .filter(char => !excludeChars?.includes(char));
+            if (availableUppercase.length > 0) {
+                password.push(availableUppercase[Math.floor(Math.random() * availableUppercase.length)]);
+            }
         }
         if (useNumbers) {
-            password.push(NUMBERS[Math.floor(Math.random() * NUMBERS.length)]);
+            const availableNumbers = NUMBERS.split('')
+                .filter(char => !excludeChars?.includes(char));
+            if (availableNumbers.length > 0) {
+                password.push(availableNumbers[Math.floor(Math.random() * availableNumbers.length)]);
+            }
         }
         if (useSpecialChars) {
-            password.push(specialCharsList[Math.floor(Math.random() * specialCharsList.length)]);
+            const availableSpecial = specialCharsList.split('')
+                .filter(char => !excludeChars?.includes(char));
+            if (availableSpecial.length > 0) {
+                password.push(availableSpecial[Math.floor(Math.random() * availableSpecial.length)]);
+            }
         }
     }
     
@@ -97,6 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const noConsecutiveRepeats = document.getElementById('noRepeats').checked;
         const ensureOneOfEach = document.getElementById('ensureOne').checked;
         const numPasswords = parseInt(document.getElementById('numPasswords').value);
+        const excludeChars = document.getElementById('excludeChars').value;
         
         // Validate inputs
         if (minLength > maxLength) {
@@ -107,43 +132,62 @@ document.addEventListener('DOMContentLoaded', () => {
         const passwordsList = document.getElementById('passwordsList');
         passwordsList.innerHTML = '';
         
-        // Generate passwords
-        for (let i = 0; i < numPasswords; i++) {
-            const password = generatePassword(
-                minLength, maxLength, useSpecialChars, specialCharsList,
-                useNumbers, allowCapitalLetters, noConsecutiveRepeats,
-                ensureOneOfEach
-            );
+        try {
+            // Generate passwords
+            for (let i = 0; i < numPasswords; i++) {
+                const password = generatePassword(
+                    minLength, maxLength, useSpecialChars, specialCharsList,
+                    useNumbers, allowCapitalLetters, noConsecutiveRepeats,
+                    ensureOneOfEach, excludeChars
+                );
+                
+                // Create password item with copy button
+                const passwordItem = document.createElement('div');
+                passwordItem.className = 'password-item';
+                
+                // Use textContent to safely display the password
+                const passwordText = document.createElement('span');
+                passwordText.textContent = `${i + 1}. ${password}`;
+                passwordItem.appendChild(passwordText);
+                
+                // Create the copy button and append it
+                const copyButton = document.createElement('button');
+                copyButton.textContent = 'Copy';
+                copyButton.onclick = () => copyToClipboard(password, copyButton);
+                passwordItem.appendChild(copyButton);
+                
+                // Append the password item to the list
+                passwordsList.appendChild(passwordItem);
+            }
             
-            // Create password item with copy button
-            const passwordItem = document.createElement('div');
-            passwordItem.className = 'password-item';
-            
-            // Use textContent to safely display the password
-            const passwordText = document.createElement('span');
-            passwordText.textContent = `${i + 1}. ${password}`;
-            passwordItem.appendChild(passwordText);
-            
-            // Create the copy button and append it
-            const copyButton = document.createElement('button');
-            copyButton.textContent = 'Copy';
-            copyButton.onclick = () => copyToClipboard(password);
-            passwordItem.appendChild(copyButton);
-            
-            // Append the password item to the list
-            passwordsList.appendChild(passwordItem);
+            // Show results
+            document.getElementById('results').classList.add('show');
+        } catch (error) {
+            alert(error.message);
         }
-        
-        // Show results
-        document.getElementById('results').classList.add('show');
     });
 });
 
-// Utility function to copy password to clipboard
-function copyToClipboard(text) {
+// Updated copy to clipboard function with button state feedback
+function copyToClipboard(text, button) {
     navigator.clipboard.writeText(text).then(() => {
-        alert('Password copied to clipboard!');
+        const originalText = button.textContent;
+        button.textContent = 'Copied!';
+        button.disabled = true;
+        
+        // Reset button after 1.5 seconds
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.disabled = false;
+        }, 1500);
     }).catch(err => {
         console.error('Failed to copy password:', err);
+        button.textContent = 'Error';
+        
+        // Reset button after 1.5 seconds
+        setTimeout(() => {
+            button.textContent = 'Copy';
+            button.disabled = false;
+        }, 1500);
     });
 }

@@ -176,6 +176,14 @@ header p {
     color: var(--text-color);
 }
 
+.input-group .input-hint {
+    display: block;
+    font-size: 0.8em;
+    color: var(--text-color);
+    opacity: 0.8;
+    margin-top: 4px;
+}
+
 .checkbox-group {
     margin-bottom: 1.5rem;
 }
